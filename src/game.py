@@ -14,6 +14,7 @@ from src.entities.state import State
 from src.sounds.manager import SoundManager
 from src.enums import Shores, NPCType
 from src.solver import Solver
+from src.utils import resource_path
 import copy
 import os
 
@@ -23,6 +24,9 @@ class Game:
         pg.init()
         self.screen = pg.display.set_mode(settings.DIMENSIONS)
         pg.display.set_caption("Missionaries and Cannibals")
+        ico_path = resource_path(os.path.join('assets', 'icon.png'))
+        ico = pg.image.load(ico_path)
+        pg.display.set_icon(ico)
         self.clock = pg.time.Clock()
         self.running = True
         self.auto_solving = False
@@ -31,7 +35,7 @@ class Game:
         self.objective_state = ((0, 0), (3, 3))
 
         # Sounds manager setup
-        sounds_dir = os.path.join(os.path.dirname(__file__), '../assets/sounds')
+        sounds_dir = resource_path(os.path.join('assets', 'sounds'))
         self.sound_manager = SoundManager(sounds_dir)
         self.sound_manager.start_background_loop()
 
