@@ -33,6 +33,14 @@ class NPC(Sprite):
     def shore(self):
         return self.current_shore
 
+    def set_shore(self, shore: Shores):
+        """
+        Set the NPC's shore to the specified shore.
+        """
+        self.current_shore = shore
+        pos = self.right_shore_pos if shore == Shores.RIGHT else self.left_shore_pos
+        self.move(pos)
+
     def _create_image(self) -> Surface:
         """
         Create an image with more detailed shapes and antialiasing.
@@ -40,8 +48,8 @@ class NPC(Sprite):
         W, H = map(int, self.dimensions)
         surf = Surface((W, H), pg.SRCALPHA)
 
-        # draw entity box
-        gfxdraw.box(surf, pg.Rect(0, 0, W, H), (255, 0, 0, 100))  # transparent box
+        # draw entity box (debug)
+        # gfxdraw.box(surf, pg.Rect(0, 0, W, H), (255, 0, 0, 100))  # transparent box
 
         # === Body ===
         self._figure(surf)

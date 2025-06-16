@@ -3,11 +3,12 @@ from src.enums import Shores, NPCType
 
 
 class State:
-    def __init__(self, missionaries_left, cannibals_left, objective_state: Tuple[Tuple[int, int], Tuple[int, int]], boat_position: Shores):
+    def __init__(self, missionaries_left, cannibals_left, objective_state: Tuple[Tuple[int, int], Tuple[int, int]], boat_position: Shores, counter):
         self.missionaries_left = missionaries_left
         self.cannibals_left = cannibals_left
         self.boat_position = boat_position  # "left" or "right"
         self.objective_state = objective_state
+        self.counter = counter
 
     @property
     def missionaries_right(self) -> int:
@@ -17,13 +18,14 @@ class State:
     def cannibals_right(self) -> int:
         return 3 - self.cannibals_left
 
-    def update_state(self, missionaries_left: int, cannibals_left: int, boat_position: Shores):
+    def update_state(self, missionaries_left: int, cannibals_left: int, boat_position: Shores, counter: int):
         """
         Update the state with new values.
         """
         self.missionaries_left = missionaries_left
         self.cannibals_left = cannibals_left
         self.boat_position = boat_position
+        self.counter = counter
 
     def is_objective(self):
         # Check if all missionaries and cannibals are on the right side
