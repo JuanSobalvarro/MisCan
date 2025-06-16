@@ -48,54 +48,52 @@ class ObjectiveSprite(pg.sprite.Sprite):
 
     def _draw_objective(self):
         W, H = self.rect.size
-        circle_radius = min(W, H) // 12
-        triangle_offset = min(W, H) // 12
+        circle_radius = min(W, H) // 14
+        triangle_offset = circle_radius
+        padding = 6
 
-        # Clear background
         self.image.fill((240, 240, 240, self.transparency))
 
-        # Draw river
         river_rect = pg.Rect(W // 3, 0, W // 3, H)
         pg.draw.rect(self.image, (0, 0, 255, self.transparency), river_rect)
 
-        # Transparent surface for antialiased shapes
         shape_surface = pg.Surface((W, H), pg.SRCALPHA)
-
-        # Unpack objective counts
         (left_m, left_c), (right_m, right_c) = self.objective_state.objective_state
 
-        # Positions for drawing entities
-        side_x_positions = {
-            Shores.LEFT: W // 6,
-            Shores.RIGHT: W - W // 6
+        side_positions = {
+            Shores.LEFT: {
+                "mis_x": W // 15,
+                "can_x": W // 6
+            },
+            Shores.RIGHT: {
+                "mis_x": W - W // 15,
+                "can_x": W - W // 6
+            }
         }
 
-        def draw_cannibals(side, count):
-            cx = side_x_positions[side]
-            for i in range(count):
-                cy = H // 6 + i * H // 5
-                gfxdraw.aacircle(shape_surface, cx, cy, circle_radius, (200, 0, 0, self.transparency))
-                gfxdraw.filled_circle(shape_surface, cx, cy, circle_radius, (200, 0, 0, self.transparency))
+        def draw_side(side, num_m, num_c):
+            mis_x = side_positions[side]["mis_x"]
+            can_x = side_positions[side]["can_x"]
+            for i in range(3):  # Up to 3 missionaries/cannibals expected
+                # Missionaries vertical positions match your game reset positions
+                if i < num_m:
+                    my = H // 5 * (1 + i)
+                    points = [
+                        (mis_x, my - triangle_offset),
+                        (mis_x - triangle_offset, my + triangle_offset),
+                        (mis_x + triangle_offset, my + triangle_offset)
+                    ]
+                    gfxdraw.aapolygon(shape_surface, points, (0, 0, 0, self.transparency))
+                    gfxdraw.filled_polygon(shape_surface, points, (0, 0, 0, self.transparency))
 
-        def draw_missionaries(side, count):
-            cx = side_x_positions[side]
-            for i in range(count):
-                cy = H // 6 + i * H // 5
-                points = [
-                    (cx, cy - triangle_offset),
-                    (cx - triangle_offset, cy + triangle_offset),
-                    (cx + triangle_offset, cy + triangle_offset)
-                ]
-                gfxdraw.aapolygon(shape_surface, points, (0, 0, 0, self.transparency))
-                gfxdraw.filled_polygon(shape_surface, points, (0, 0, 0, self.transparency))
+                if i < num_c:
+                    cy = H // 5 * (1 + i) + H // 10
+                    gfxdraw.aacircle(shape_surface, can_x, cy, circle_radius, (200, 0, 0, self.transparency))
+                    gfxdraw.filled_circle(shape_surface, can_x, cy, circle_radius, (200, 0, 0, self.transparency))
 
-        # Draw left side
-        draw_cannibals(Shores.LEFT, left_c)
-        draw_missionaries(Shores.LEFT, left_m)
+        draw_side(Shores.LEFT, left_m, left_c)
+        draw_side(Shores.RIGHT, right_m, right_c)
 
-        # Draw right side
-        draw_cannibals(Shores.RIGHT, right_c)
-        draw_missionaries(Shores.RIGHT, right_m)
-
-        # Blit to final surface
         self.image.blit(shape_surface, (0, 0))
+
+

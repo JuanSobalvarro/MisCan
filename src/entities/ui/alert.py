@@ -2,58 +2,83 @@ import pygame as pg
 from pygame.sprite import Sprite
 from pygame import gfxdraw
 
-
 class Alert(Sprite):
     def __init__(self, pos, size, color, text, callback=None, text_size=28, radius=12):
         super().__init__()
-        self.image = pg.Surface(size, pg.SRCALPHA)
-        self.rect = self.image.get_rect(topleft=pos)
-        self.text = text
+        self.pos = pos
+        self.size = size
         self.color = color
-        self.callback = callback
+        self.text = text
+        self.callback = callback            # Callback when alert is shown
         self.text_size = text_size
         self.radius = radius
-        self.visible = False
+
+        self.image = pg.Surface(size, pg.SRCALPHA)
+        self.rect = self.image.get_rect(topleft=pos)
         self._render()
 
-    def show_alert_ms(self, surface, time_ms: int):
+        self.visible = False
+        self.hide_time = None
+        self.show_callback = None          # Callback to run when alert hides
+
+    def set_text(self, new_text):
         """
-        Display the alert for a specified duration in milliseconds.
+        Update the alert text and re-render the surface.
+        """
+        self.text = new_text
+        self._render()
+
+
+    def show(self, timeout_ms=None, on_hide_callback=None):
+        """
+        Show the alert, optionally auto-hide after timeout_ms milliseconds,
+        and optionally execute on_hide_callback when it hides.
         """
         self.visible = True
         if self.callback:
-            # Call the callback function if provided
             self.callback()
-        self._render()
-        surface.blit(self.image, self.rect)
-        pg.display.update(self.rect)
-        pg.time.delay(time_ms)
-        self.hide_alert(surface)
+        self.show_callback = on_hide_callback
+        if timeout_ms:
+            self.hide_time = pg.time.get_ticks() + timeout_ms
+        else:
+            self.hide_time = None
 
-    def hide_alert(self, surface):
+    def hide(self):
         """
-        Hide the alert by filling the area with a transparent color.
+        Hide the alert immediately and run the show_callback if set.
         """
+        if self.visible and self.show_callback:
+            self.show_callback()
+            self.show_callback = None  # Ensure callback runs only once
         self.visible = False
-        surface.fill((0, 0, 0, 0), self.rect)  # Fill with transparent in case you have alpha surface
-        pg.display.update(self.rect)
+        self.hide_time = None
+
+    def update(self, *args):
+        """
+        Call this in your main loop to auto-hide when timeout is reached.
+        """
+        if self.visible and self.hide_time and pg.time.get_ticks() >= self.hide_time:
+            self.hide()
+
+    def draw(self, surface):
+        """
+        Draw the alert on the given surface if visible.
+        """
+        if self.visible:
+            surface.blit(self.image, self.rect)
 
     def on_click(self, event):
         """
-        Call the callback if the alert was clicked.
+        Hide the alert if clicked.
         """
         if self.visible and self.rect.collidepoint(event.pos):
-            if self.callback:
-                self.callback()
-            self.hide_alert()
+            self.hide()
 
     def _render(self):
         """
-        Render the alert surface with text and rounded corners.
+        Pre-render the alert surface with text and rounded corners.
         """
         self.image.fill((0, 0, 0, 0))  # Clear previous content
-
-        # Draw rounded rectangle background
         self._draw_rounded_rect(self.image, self.color, self.image.get_rect(), self.radius)
 
         # Render text
@@ -69,13 +94,10 @@ class Alert(Sprite):
         x, y, w, h = rect
         gfxdraw.aacircle(surface, x + radius, y + radius, radius, color)
         gfxdraw.filled_circle(surface, x + radius, y + radius, radius, color)
-
         gfxdraw.aacircle(surface, x + w - radius - 1, y + radius, radius, color)
         gfxdraw.filled_circle(surface, x + w - radius - 1, y + radius, radius, color)
-
         gfxdraw.aacircle(surface, x + radius, y + h - radius - 1, radius, color)
         gfxdraw.filled_circle(surface, x + radius, y + h - radius - 1, radius, color)
-
         gfxdraw.aacircle(surface, x + w - radius - 1, y + h - radius - 1, radius, color)
         gfxdraw.filled_circle(surface, x + w - radius - 1, y + h - radius - 1, radius, color)
 

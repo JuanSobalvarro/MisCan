@@ -11,9 +11,11 @@ from src.entities.ui.objective_sprite import ObjectiveSprite
 from src.entities.ui.counter_frame import CounterFrame
 from src.entities.ui.alert import Alert
 from src.entities.state import State
+from src.sounds.manager import SoundManager
 from src.enums import Shores, NPCType
 from src.solver import Solver
 import copy
+import os
 
 
 class Game:
@@ -27,6 +29,11 @@ class Game:
         self.fps = settings.FPS
         self.counter = CounterFrame((100, 50), (0, settings.DIMENSIONS[1] - 50), self.screen)
         self.objective_state = ((0, 0), (3, 3))
+
+        # Sounds manager setup
+        sounds_dir = os.path.join(os.path.dirname(__file__), '../assets/sounds')
+        self.sound_manager = SoundManager(sounds_dir)
+        self.sound_manager.start_background_loop()
 
         self.current_state = State(3, 3, self.objective_state, Shores.LEFT, self.counter.counter)
         self.state_history = [self.current_state]
@@ -60,7 +67,8 @@ class Game:
     def go_back(self):
         if len(self.state_history) == 1:
             self.warning_alert.text = f"You should move!"
-            self.warning_alert.show_alert_ms(self.screen, 2000)
+            self.sound_manager.play('warning')
+            self.warning_alert.show(5000, on_hide_callback=lambda: self.sound_manager.stop('warning'))
             return
 
         if len(self.state_history) == 2:
@@ -80,6 +88,8 @@ class Game:
 
     def solve_from_current_state(self):
         self.auto_solving = True
+        self.sound_manager.stop_background_loop()
+        self.sound_manager.play('autosolve')
         states: list[State] = Solver.solve_from_state(self.current_state)
 
         delay_between_moves = 500  # milliseconds
@@ -133,12 +143,13 @@ class Game:
 
         self.current_state = state
 
-
-
     def reset_game(self, init=False):
         width, height = settings.DIMENSIONS
         self.all_sprites.empty()
         self.npc_sprites.empty()
+
+        if not self.sound_manager.is_background_playing():
+            self.sound_manager.start_background_loop()
 
         self.boat.reset_boat()
 
@@ -189,7 +200,9 @@ class Game:
     def move_boat(self):
 
         if not self.boat.move():
-            print("Boat cannot move! Check if it has passengers.")
+            self.sound_manager.play('warning')
+            self.warning_alert.set_text("Min 1 Person")
+            self.warning_alert.show(5000, on_hide_callback=lambda: self.sound_manager.stop('warning'))
             return
 
         self.counter.increase()
@@ -216,12 +229,14 @@ class Game:
     def validate_state(self, state: State):
         print(f"Validating state: {state}")
         if not state.is_valid():
-            print("Invalid state! Missionaries killed.")
-            self.bad_alert.show_alert_ms(self.screen, 2000)
+            self.sound_manager.play("failure")
+            self.bad_alert.set_text("Missionaries killed.")
+            self.bad_alert.show(5000, on_hide_callback=lambda: self.sound_manager.stop('failure'))
             self.reset_game()
         elif state.is_objective():
-            print(f"Objective achieved! You win!. In {self.counter.counter} moves.")
-            self.good_alert.show_alert_ms(self.screen, 2000)
+            self.good_alert.set_text(f"You won in {self.counter.counter} moves.")
+            self.sound_manager.play("success")
+            self.good_alert.show(5000, on_hide_callback=lambda: self.sound_manager.stop('success'))
             self.reset_game()
         else:
             self.state_history.append(copy.deepcopy(state))
@@ -257,6 +272,7 @@ class Game:
 
     def handle_events(self):
         for event in pg.event.get():
+            self.sound_manager.handle_event(event)
             if event.type == pg.QUIT:
                 self.running = False
             elif event.type == pg.MOUSEBUTTONDOWN:
@@ -273,9 +289,20 @@ class Game:
                         self.back_button.on_click()
                     elif self.solve_button.rect.collidepoint(event.pos):
                         self.solve_button.on_click()
+
+                    self._handle_alerts_click(event)
+
                     npc = self._get_clicked_npc(event.pos)
                     if npc:
                         self._handle_npc_click(npc)
+
+    def _handle_alerts_click(self, event):
+        if self.good_alert.rect.collidepoint(event.pos):
+            self.good_alert.on_click(event)
+        elif self.warning_alert.rect.collidepoint(event.pos):
+            self.warning_alert.on_click(event)
+        elif self.bad_alert.rect.collidepoint(event.pos):
+            self.bad_alert.on_click(event)
 
     def _get_clicked_npc(self, pos):
         for npc in self.npc_sprites:
@@ -302,9 +329,14 @@ class Game:
 
     def update(self):
         self.all_sprites.update()
-        # print("Current State:", self.current_state)
+        self.good_alert.update()
+        self.warning_alert.update()
+        self.bad_alert.update()
 
     def draw(self):
         self.screen.fill((255, 255, 255))
         self.all_sprites.draw(self.screen)
+        self.good_alert.draw(self.screen)
+        self.warning_alert.draw(self.screen)
+        self.bad_alert.draw(self.screen)
         pg.display.flip()
